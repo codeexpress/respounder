@@ -26,6 +26,8 @@ const (
 
 	Version    = 1.0
 	TimeoutSec = 3
+	BcastAddr  = "224.0.0.252"
+	LLMNRPort  = 5355
 )
 
 var (
@@ -73,6 +75,7 @@ func main() {
 	logger.Println("======== Ending RESPOUNDER Session ========")
 }
 
+// Test presence of responder on a given interface
 func checkResponderOnInterface(inf net.Interface) map[string]string {
 	var json map[string]string
 	addrs, _ := inf.Addrs()
@@ -114,7 +117,7 @@ func sendLLMNRProbe(ip net.IP) string {
 		"0000000100000000000012617769657264636f6d70757465726e616d650000010001"
 	n, _ := hex.DecodeString(llmnrRequest)
 
-	remoteAddr := net.UDPAddr{IP: net.ParseIP("224.0.0.252"), Port: 5355}
+	remoteAddr := net.UDPAddr{IP: net.ParseIP(BcastAddr), Port: LLMNRPort}
 
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: ip})
 	if err != nil {
