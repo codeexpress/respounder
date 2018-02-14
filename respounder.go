@@ -49,18 +49,19 @@ var (
 		`Creates a debug.log file with a trace of the program`)
 	
 	compPtr = flag.String("computername", "aweirdcomputername",
-		`Overrides the default computer name`)
+		`Overrides the default computer name, requires at least 16 charcter hostname`)
 
 )
 
 func main() {
 	initFlags()
-
-	fmt.Fprintln(os.Stderr, Banner)
+	flag.Parse()
 
 	if *compPtr != "aweirdcomputername" {
-		computerName = *compPtr
+		computerName = string(*compPtr)
 	}
+
+	fmt.Fprintln(os.Stderr, Banner)
 
 	interfaces, _ := net.Interfaces()
 	logger.Println("======== Starting RESPOUNDER ========")
