@@ -24,7 +24,7 @@ const (
     '-'
 `
 
-	Version    = 1.0
+	Version    = 1.1
 	TimeoutSec = 3
 	BcastAddr  = "224.0.0.252"
 	LLMNRPort  = 5355
@@ -37,19 +37,30 @@ var (
 	// default logger is set to abyss
 	logger = log.New(ioutil.Discard, "", 0)
 
+	// default computername to broadcast
+	computerName = "aweirdcomputername"
+
 	// argument flags
 	jsonPtr = flag.Bool("json", false,
 		`Prints a JSON to STDOUT if a responder is detected on
-	network. Other text is sent to STDERR`)
+		network. Other text is sent to STDERR`)
 
 	debugPtr = flag.Bool("debug", false,
 		`Creates a debug.log file with a trace of the program`)
+	
+	compPtr = flag.String("computername", "aweirdcomputername",
+		`Overrides the default computer name`)
+
 )
 
 func main() {
 	initFlags()
 
 	fmt.Fprintln(os.Stderr, Banner)
+
+	if *compPtr != "aweirdcomputername" {
+		computerName = *compPtr
+	}
 
 	interfaces, _ := net.Interfaces()
 	logger.Println("======== Starting RESPOUNDER ========")
@@ -108,13 +119,13 @@ func sendLLMNRProbe(ip net.IP) string {
 	responderIP := ""
 	// 2 byte random transaction id eg. 0x8e53
 	rand.Seed(time.Now().UnixNano())
-	randomTransactionId := fmt.Sprintf("%04x", rand.Intn(65535))
+	randomTransactionID := fmt.Sprintf("%04x", rand.Intn(65535))
 
-	// LLMNR request in raw bytes
-	// TODO: generate a new computer name evertime instead of the
-	// hardcoded value 'awierdcomputername'
-	llmnrRequest := randomTransactionId +
-		"0000000100000000000012617769657264636f6d70757465726e616d650000010001"
+	cNameLen := fmt.Sprintf("%2x", len(computerName))
+	encCName := hex.EncodeToString([]byte(computerName))
+
+	llmnrRequest := randomTransactionID + "00000001000000000000" + cNameLen + encCName + "0000010001"
+
 	n, _ := hex.DecodeString(llmnrRequest)
 
 	remoteAddr := net.UDPAddr{IP: net.ParseIP(BcastAddr), Port: LLMNRPort}
@@ -159,7 +170,7 @@ func getValidIPv4Addr(addrs []net.Addr) net.IP {
 func initFlags() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Respounder version %1.1f\n", Version)
-		fmt.Fprintf(os.Stderr, "Usage: $ respounder [-json] [-debug]")
+		fmt.Fprintf(os.Stderr, "Usage: $ respounder [-json] [-debug] [-computername anewcomputername]")
 		fmt.Fprintf(os.Stderr, "\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
