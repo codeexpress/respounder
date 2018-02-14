@@ -171,7 +171,7 @@ func getValidIPv4Addr(addrs []net.Addr) net.IP {
 func initFlags() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Respounder version %1.1f\n", Version)
-		fmt.Fprintf(os.Stderr, "Usage: $ respounder [-json] [-debug] [-computername anewcomputername]")
+		fmt.Fprintf(os.Stderr, "Usage: $ respounder [-json] [-debug] [-computername anewcomputername!]")
 		fmt.Fprintf(os.Stderr, "\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
