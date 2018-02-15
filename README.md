@@ -33,7 +33,7 @@ the following will build the binary from scratch
 ```
 $ git clone https://github.com/codeexpress/respounder
 $ cd respounder
-$ go build respounder
+$ go build -o respounder respounder.go computernames.go
 ```
 
 ## Usage
@@ -58,16 +58,22 @@ $ ./respounder
 ### Flags
 
 ```
-$ ./respounder [-json] [-debug]
+$ ./respounder [-json] [-debug] [-computername anewcomputername! | -rcomputername | -rstring]
 
 Flags:
+  -computername string
+        Overrides the default computer name, requires at least 16 charcter hostname (default "aweirdcomputername")
+  -debug
+        Creates a debug.log file with a trace of the program
   -json
         Prints a JSON to STDOUT if a responder is detected on
         network. Other text is sent to STDERR
-  -debug
-        Creates a debug.log file with a trace of the program
   -help
         Displays this help
+  -rcomputername
+        Overrides the default computer name, with a random choice of words
+  -rstring
+        Overrides the default computer name, with a completely random string
 ```
 
 
