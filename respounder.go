@@ -30,6 +30,13 @@ const (
 	LLMNRPort  = 5355
 )
 
+const (
+	def     = 0x00
+	newComp = 0x01
+	randCom = 0x02
+	randStr = 0x03
+)
+
 var (
 	// stdout is default output
 	outFile = os.Stdout
@@ -40,10 +47,18 @@ var (
 	// argument flags
 	jsonPtr = flag.Bool("json", false,
 		`Prints a JSON to STDOUT if a responder is detected on
-	network. Other text is sent to STDERR`)
+		network. Other text is sent to STDERR`)
 
 	debugPtr = flag.Bool("debug", false,
 		`Creates a debug.log file with a trace of the program`)
+
+	compPtr = flag.String("computername", "aweirdcomputername",
+		`Overrides the default computer name, requires at least 16 charcter hostname`)
+	randCompPtr = flag.Bool("rcomputername", false,
+		`Overrides the default computer name, with a random choice of words`)
+	randStrPtr = flag.Bool("rstring", false,
+		`Overrides the default computer name, with a completely random string`)
+	comNameType byte
 )
 
 func init() {
@@ -52,6 +67,17 @@ func init() {
 
 func main() {
 	initFlags()
+	flag.Parse()
+
+	if *compPtr != "aweirdcomputername" {
+		comNameType = newComp
+	} else if *randCompPtr {
+		comNameType = randCom
+	} else if *randStrPtr {
+		comNameType = randStr
+	} else {
+		comNameType = def
+	}
 
 	fmt.Fprintln(os.Stderr, Banner)
 
@@ -109,12 +135,22 @@ func checkResponderOnInterface(inf net.Interface) map[string]string {
 
 // Creates and sends a LLMNR request to the UDP multicast address.
 func sendLLMNRProbe(ip net.IP) string {
+	var cName string
 	responderIP := ""
 	// 2 byte random transaction id eg. 0x8e53
 	randomTransactionID := fmt.Sprintf("%04x", rand.Intn(65535))
-	computerName := getComputerName()
-	cNameLen := fmt.Sprintf("%2x", len(computerName))
-	encCName := hex.EncodeToString([]byte(computerName))
+	switch comNameType {
+	case def:
+		cName = string(*compPtr)
+	case newComp:
+		cName = string(*compPtr)
+	case randCom:
+		cName = getComputerName()
+	case randStr:
+		cName = randomString()
+	}
+	cNameLen := fmt.Sprintf("%2x", len(cName))
+	encCName := hex.EncodeToString([]byte(cName))
 	// LLMNR request in raw bytes
 	llmnrRequest := randomTransactionID +
 		"00000001000000000000" + cNameLen + encCName + "0000010001"
@@ -162,7 +198,7 @@ func getValidIPv4Addr(addrs []net.Addr) net.IP {
 func initFlags() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Respounder version %1.1f\n", Version)
-		fmt.Fprintf(os.Stderr, "Usage: $ respounder [-json] [-debug]")
+		fmt.Fprintf(os.Stderr, "Usage: $ respounder [-json] [-debug] [-computername anewcomputername! | -rcomputername | -rstring]")
 		fmt.Fprintf(os.Stderr, "\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
