@@ -40,14 +40,19 @@ func getComputerName() string {
 func randomString() string {
 	strLen := getRandomNumberBetween(16, 32)
 	compName := make([]string, strLen)
-	var numOrStr int
 	for x := 0; x < strLen; x++ {
-		numOrStr = getRandomNumber(2)
+		numOrStr := getRandomNumber(2)
+		upperOrLower := getRandomNumber(2)
 		switch numOrStr {
 		case 0:
 			compName[x] = num[getRandomNumber(len(num))]
 		case 1:
-			compName[x] = alph[getRandomNumber(len(alph))]
+			switch upperOrLower {
+			case 0:
+				compName[x] = alph[getRandomNumber(len(alph))]
+			case 1:
+				compName[x] = strings.ToUpper(alph[getRandomNumber(len(alph))])
+			}
 		}
 	}
 	return strings.Join(compName, "")

@@ -140,9 +140,7 @@ func sendLLMNRProbe(ip net.IP) string {
 	// 2 byte random transaction id eg. 0x8e53
 	randomTransactionID := fmt.Sprintf("%04x", rand.Intn(65535))
 	switch comNameType {
-	case def:
-		cName = string(*compPtr)
-	case newComp:
+	case def, newComp:
 		cName = string(*compPtr)
 	case randCom:
 		cName = getComputerName()
