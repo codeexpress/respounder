@@ -25,7 +25,8 @@
 
 ### Latest Releases
 Respounder is available for 32/64 bit linux, OS X and Windows systems.
-Latest versions can be downloaded from the [Release](https://github.com/codeexpress/respounder/releases) tab above.
+Latest versions can be downloaded from the
+[Release](https://github.com/codeexpress/respounder/releases) tab above.
 
 ### Build from source
 This is a golang project with no dependencies. Assuming you have golang compiler installed,
@@ -33,7 +34,7 @@ the following will build the binary from scratch
 ```
 $ git clone https://github.com/codeexpress/respounder
 $ cd respounder
-$ go build respounder
+$ go build -o respounder respounder.go
 ```
 
 ## Usage
@@ -58,24 +59,26 @@ $ ./respounder
 ### Flags
 
 ```
-$ ./respounder [-json] [-debug]
+$ ./respounder [-json] [-debug] [-hostname testhostname | -rhostname]
 
 Flags:
   -json
         Prints a JSON to STDOUT if a responder is detected on
-        network. Other text is sent to STDERR
+        the network. Other text is sent to STDERR
   -debug
         Creates a debug.log file with a trace of the program
-  -help
-        Displays this help
+  -hostname string
+        Hostname to search for (default "aweirdcomputername")
+  -rhostname
+        Searches for a hostname comprised of random string instead
+        of the default hostname ("aweirdcomputername")
 ```
-
 
 ### Typical usage scenario
 
 #### Personal
 Detect rogue hosts running responder on public Wi-Fi networks
-e.g. like Airports, Cafés and avoid joining such networks
+e.g. like airports, cafés and avoid joining such networks
 (especially if you are running windows OS)
 
 #### Corporate
