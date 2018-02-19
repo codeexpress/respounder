@@ -5,3 +5,4 @@ all:
 	GOOS=linux GOARCH=amd64 go build -o binaries/respounder-linux64 respounder.go
 	GOOS=darwin GOARCH=386 go build -o binaries/respounder-osx32 respounder.go
 	GOOS=darwin GOARCH=amd64 go build -o binaries/respounder-osx64 respounder.go
+

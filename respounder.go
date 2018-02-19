@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -24,10 +25,17 @@ const (
     '-'
 `
 
-	Version    = 1.0
-	TimeoutSec = 3
-	BcastAddr  = "224.0.0.252"
-	LLMNRPort  = 5355
+	Version         = 1.1
+	TimeoutSec      = 3
+	BcastAddr       = "224.0.0.252"
+	LLMNRPort       = 5355
+	DefaultHostname = "aweirdcomputername"
+)
+
+const (
+	def          = 0x00
+	newHostname  = 0x01
+	randHostname = 0x02
 )
 
 var (
@@ -40,14 +48,35 @@ var (
 	// argument flags
 	jsonPtr = flag.Bool("json", false,
 		`Prints a JSON to STDOUT if a responder is detected on
-	network. Other text is sent to STDERR`)
+        the network. Other text is sent to STDERR`)
 
 	debugPtr = flag.Bool("debug", false,
 		`Creates a debug.log file with a trace of the program`)
+
+	hostnamePtr = flag.String("hostname", DefaultHostname,
+		`Hostname to search for`)
+	randHostnamePtr = flag.Bool("rhostname", false,
+		`Searches for a hostname comprised of random string instead
+        of the default hostname ("`+DefaultHostname+`")`)
+
+	hostnameType byte
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 func main() {
 	initFlags()
+	flag.Parse()
+
+	if *hostnamePtr != "aweirdcomputername" {
+		hostnameType = newHostname
+	} else if *randHostnamePtr {
+		hostnameType = randHostname
+	} else {
+		hostnameType = def
+	}
 
 	fmt.Fprintln(os.Stderr, Banner)
 
@@ -105,16 +134,23 @@ func checkResponderOnInterface(inf net.Interface) map[string]string {
 
 // Creates and sends a LLMNR request to the UDP multicast address.
 func sendLLMNRProbe(ip net.IP) string {
+	var cName string
 	responderIP := ""
 	// 2 byte random transaction id eg. 0x8e53
-	rand.Seed(time.Now().UnixNano())
-	randomTransactionId := fmt.Sprintf("%04x", rand.Intn(65535))
+	randomTransactionID := fmt.Sprintf("%04x", rand.Intn(65535))
 
+	switch hostnameType {
+	case def, newHostname:
+		cName = string(*hostnamePtr)
+	case randHostname:
+		cName = randomHostname()
+	}
+
+	cNameLen := fmt.Sprintf("%02x", len(cName))
+	encCName := hex.EncodeToString([]byte(cName))
 	// LLMNR request in raw bytes
-	// TODO: generate a new computer name evertime instead of the
-	// hardcoded value 'awierdcomputername'
-	llmnrRequest := randomTransactionId +
-		"0000000100000000000012617769657264636f6d70757465726e616d650000010001"
+	llmnrRequest := randomTransactionID +
+		"00000001000000000000" + cNameLen + encCName + "0000010001"
 	n, _ := hex.DecodeString(llmnrRequest)
 
 	remoteAddr := net.UDPAddr{IP: net.ParseIP(BcastAddr), Port: LLMNRPort}
@@ -124,6 +160,7 @@ func sendLLMNRProbe(ip net.IP) string {
 		fmt.Println("Couldn't bind to a UDP interface. Bailing out!")
 		logger.Printf("Bind error: %+v\nSource IP: %v\n", err, ip)
 		fmt.Println(err)
+		logger.Printf("LLMNR request payload was: %x\n", llmnrRequest)
 	}
 
 	defer conn.Close()
@@ -134,12 +171,25 @@ func sendLLMNRProbe(ip net.IP) string {
 	bytes, clientIP, err := conn.ReadFromUDP(buffer)
 	if err == nil { // no timeout (or any other) error
 		responderIP = strings.Split(clientIP.String(), ":")[0]
+		logger.Printf("LLMNR request payload was: %x\n", n)
 		logger.Printf("Data received on %s from responder IP %s: %x\n",
 			ip, clientIP, buffer[:bytes])
 	} else {
 		logger.Printf("Error getting response:  %s\n", err)
 	}
 	return responderIP
+}
+
+// Calculate random hostname by taking random lenght
+// of the SHA1 of current time.
+func randomHostname() string {
+	currentTime := time.Now().Format("2006-01-02 15:04:05")
+	h := sha1.New()
+	h.Write([]byte(currentTime))
+	bs := h.Sum(nil)
+	randomSlice := bs[:(rand.Intn(len(bs)-3) + 3)]
+	randomName := fmt.Sprintf("%x\n", randomSlice)
+	return randomName
 }
 
 // From all the IP addresses of this interface,
@@ -159,7 +209,7 @@ func getValidIPv4Addr(addrs []net.Addr) net.IP {
 func initFlags() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Respounder version %1.1f\n", Version)
-		fmt.Fprintf(os.Stderr, "Usage: $ respounder [-json] [-debug]")
+		fmt.Fprintf(os.Stderr, "Usage: $ respounder [-json] [-debug] [-hostname testhostname | -rhostname]")
 		fmt.Fprintf(os.Stderr, "\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
