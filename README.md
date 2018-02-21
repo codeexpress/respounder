@@ -67,6 +67,9 @@ Flags:
         the network. Other text is sent to STDERR
   -debug
         Creates a debug.log file with a trace of the program
+  -interface string
+        Interface where responder will be searched (eg. eth0).
+        Not specifying this flag will search on all interfaces.
   -hostname string
         Hostname to search for (default "aweirdcomputername")
   -rhostname
