@@ -25,7 +25,7 @@ const (
     '-'
 `
 
-	Version         = 1.1
+	Version         = 1.2
 	TimeoutSec      = 3
 	BcastAddr       = "224.0.0.252"
 	LLMNRPort       = 5355
@@ -47,17 +47,22 @@ var (
 
 	// argument flags
 	jsonPtr = flag.Bool("json", false,
-		`Prints a JSON to STDOUT if a responder is detected on
-        the network. Other text is sent to STDERR`)
+		`Prints a JSON to STDOUT if a responder is detected in the subnet.
+        Other text is sent to STDERR`)
 
 	debugPtr = flag.Bool("debug", false,
 		`Creates a debug.log file with a trace of the program`)
 
 	hostnamePtr = flag.String("hostname", DefaultHostname,
 		`Hostname to search for`)
+
 	randHostnamePtr = flag.Bool("rhostname", false,
 		`Searches for a hostname comprised of random string instead
         of the default hostname ("`+DefaultHostname+`")`)
+
+	interfacePtr = flag.String("interface", "",
+		`Interface where responder will be searched (eg. eth0).
+        Not specifying this flag will search on all interfaces.`)
 
 	hostnameType byte
 )
@@ -70,7 +75,7 @@ func main() {
 	initFlags()
 	flag.Parse()
 
-	if *hostnamePtr != "aweirdcomputername" {
+	if *hostnamePtr != DefaultHostname {
 		hostnameType = newHostname
 	} else if *randHostnamePtr {
 		hostnameType = randHostname
@@ -86,10 +91,26 @@ func main() {
 
 	var resultMap []map[string]string
 
-	for _, inf := range interfaces {
-		detailsMap := checkResponderOnInterface(inf)
+	// send probe on specific interface if -interface flag is set
+	if *interfacePtr != "" {
+		inf, err := net.InterfaceByName(*interfacePtr)
+		if err != nil {
+			fmt.Printf("Invalid interface '%s'. List of valid interfaces are:\n", *interfacePtr)
+			for _, inf := range interfaces {
+				fmt.Println("- " + inf.Name)
+			}
+			return
+		}
+		detailsMap := checkResponderOnInterface(*inf)
 		if len(detailsMap) > 0 {
 			resultMap = append(resultMap, detailsMap)
+		}
+	} else { // send probes from all interfaces if -interface flag isn't set
+		for _, inf := range interfaces {
+			detailsMap := checkResponderOnInterface(inf)
+			if len(detailsMap) > 0 {
+				resultMap = append(resultMap, detailsMap)
+			}
 		}
 	}
 
@@ -157,10 +178,9 @@ func sendLLMNRProbe(ip net.IP) string {
 
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: ip})
 	if err != nil {
-		fmt.Println("Couldn't bind to a UDP interface. Bailing out!")
+		fmt.Printf("Could not bind to the interface. Is it disabled? ")
 		logger.Printf("Bind error: %+v\nSource IP: %v\n", err, ip)
-		fmt.Println(err)
-		logger.Printf("LLMNR request payload was: %x\n", llmnrRequest)
+		return responderIP // return with IP = ''
 	}
 
 	defer conn.Close()
@@ -180,7 +200,7 @@ func sendLLMNRProbe(ip net.IP) string {
 	return responderIP
 }
 
-// Calculate random hostname by taking random lenght
+// Calculate random hostname by taking random length
 // of the SHA1 of current time.
 func randomHostname() string {
 	currentTime := time.Now().Format("2006-01-02 15:04:05")
@@ -209,7 +229,7 @@ func getValidIPv4Addr(addrs []net.Addr) net.IP {
 func initFlags() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Respounder version %1.1f\n", Version)
-		fmt.Fprintf(os.Stderr, "Usage: $ respounder [-json] [-debug] [-hostname testhostname | -rhostname]")
+		fmt.Fprintf(os.Stderr, "Usage: $ respounder [-json] [-debug] [-interface <iface>] [-hostname <name> | -rhostname]")
 		fmt.Fprintf(os.Stderr, "\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
